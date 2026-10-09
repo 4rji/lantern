@@ -1,7 +1,7 @@
 # lantern — Build Instructions (for Claude)
 
 > **Working name:** `lantern` (rename freely; search-and-replace this file).
-> **Status:** Phases 0–5 done. Phase 6 (AI answers) not started. This file is the build spec.
+> **Status:** Phases 0–6 done. This file is the build spec.
 > Claude implements it phase by phase. Decisions made while building are listed in
 > **Implementation notes** at the end.
 
@@ -444,7 +444,7 @@ and open correctly. With no key set, the page still shows "key missing" instead 
 
 ---
 
-## Implementation notes (Phases 0–5)
+## Implementation notes (Phases 0–6)
 
 Decisions made while building, where the code differs from or adds to the spec above.
 
@@ -474,7 +474,20 @@ Decisions made while building, where the code differs from or adds to the spec a
   - Uses `HX-Replace-Url`, so the address bar stays shareable without one history entry per keystroke.
   - Results whose file is missing on this computer are shown without a link.
   - `qmd query` on the CLI also expands the query with its own model. Smart mode sends only `lex` + `vec`, so ordering can differ slightly from the CLI.
-- **AI (Phase 5 stubs):**
+- **AI:**
   - The `ai.KeyHinter` interface supplies the masked key (`••••` + last 4 characters) shown in Settings.
-  - The OpenAI default model is empty until Phase 6 picks one from current docs.
+  - `AskRequest` has an extra `Tools *ai.Toolbox` field: a provider-independent executor for the three tools, built per question by the server with the chosen collections and a progress callback. Providers only translate tool calls.
+  - **Claude:** uses `anthropic-sdk-go` v1.80 with the beta tool runner, stepped with `NextMessage` so `stop_reason == "refusal"` is checked on every turn.
+    - `MaxIterations` is 8 tool rounds plus the final answer.
+    - Effort is set explicitly in `OutputConfig` (default `medium`, `LANTERN_CLAUDE_EFFORT`). Thinking is left unset, because it is always adaptive on Opus 5.5. `tool_choice` stays `auto`.
+    - `fallbacks: "default"` with beta `server-side-fallback-2026-07-01` is sent on Opus 5.x, Fable 5.x, Mythos 5.x and Sonnet 5.5. It is not sent on Haiku or older models.
+    - Top-level `cache_control` caches the growing tool loop.
+  - **OpenAI:** uses `openai-go/v3` v3.74 with the **Responses API** (OpenAI's recommended API for reasoning models and tools).
+    - Default model `gpt-6-astra` (OpenAI's most capable model per its docs, released Sep 2026), with `reasoning.effort` `medium` (`LANTERN_OPENAI_EFFORT`).
+    - Tool rounds continue with `previous_response_id`. `instructions` is resent each round because it is not inherited.
+    - Refusals are detected from `refusal` content parts.
+  - **`POST /api/ask`:**
+    - Streams Server-Sent Events (`progress`, `answer`, `error`) when the request sends `Accept: text/event-stream`, and returns JSON otherwise.
+    - Validates before calling a provider: question, key, collections, and QMD being up.
+    - Answer markdown is rendered with the same goldmark renderer, and `` `collection/path` `` citations of sources become links. The overall timeout is 5 minutes.
 

@@ -2,27 +2,20 @@
 {{with .Data}}
 <header class="page-header">
   <h1>Ask AI</h1>
-  <p class="lead">Ask a question in plain language. The AI searches your documents through QMD and answers with sources.</p>
+  <p class="lead">Ask a question in plain language. The AI searches your documents through QMD, reads what's relevant, and answers with sources.</p>
 </header>
 
-{{if not .Enabled}}
-<div class="banner banner-info" role="status">
-  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
-  <div><strong>Coming soon — AI answers are not implemented yet.</strong> You can look around; the Ask button turns on once answers are added.</div>
-</div>
-{{end}}
-
-<form class="ask-form" action="/api/ask" method="post" onsubmit="return false">
+<form class="ask-form" action="/api/ask" method="post" data-ask-form>
   <fieldset class="provider-picker">
     <legend>Provider</legend>
     <div class="provider-options">
       {{range .Providers}}
       <label class="provider-option">
-        <input type="radio" name="provider" value="{{.ID}}"{{if .Selected}} checked{{end}}>
+        <input type="radio" name="provider" value="{{.ID}}" data-configured="{{.Configured}}" data-key-var="{{.KeyVar}}" data-name="{{.DisplayName}}"{{if .Selected}} checked{{end}}>
         <span class="provider-card">
           <span class="provider-name">{{.DisplayName}}</span>
           {{if .Configured}}<span class="badge badge-ok">Key detected</span>{{else}}<span class="badge badge-danger">Key missing</span>{{end}}
-          <span class="provider-model">{{if .Model}}{{.Model}}{{else}}Model chosen when answers are added{{end}}</span>
+          <span class="provider-model">{{.Model}}</span>
         </span>
       </label>
       {{end}}
@@ -45,11 +38,13 @@
 
   <label class="field">
     <span class="field-label">Question</span>
-    <textarea name="question" rows="4" placeholder="How do we roll back a failed deploy?"></textarea>
+    <textarea name="question" rows="4" maxlength="4000" placeholder="How do we roll back a failed deploy?" required></textarea>
   </label>
 
   <div class="ask-actions">
-    <button class="btn btn-primary" type="submit"{{if not .Enabled}} disabled aria-disabled="true" title="AI answers are not implemented yet"{{end}}>
+    <p class="ask-note" data-ask-note>Your question and the document text the AI reads are sent to the provider you pick. Searching runs on this computer.</p>
+    <button class="btn" type="button" data-ask-stop hidden>Stop</button>
+    <button class="btn btn-primary" type="submit" data-ask-submit>
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/></svg>
       Ask
     </button>
@@ -59,16 +54,20 @@
 <div class="ask-output">
   <section class="ask-panel" aria-labelledby="answer-heading">
     <h2 id="answer-heading" class="panel-title">Answer</h2>
-    <div class="panel-empty">
-      <svg class="icon empty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
-      <p>The answer will appear here.</p>
+    <div data-answer aria-live="polite">
+      <div class="panel-empty">
+        <svg class="icon empty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
+        <p>The answer will appear here.</p>
+      </div>
     </div>
   </section>
   <section class="ask-panel" aria-labelledby="sources-heading">
     <h2 id="sources-heading" class="panel-title">Sources</h2>
-    <div class="panel-empty">
-      <svg class="icon empty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
-      <p>Documents used for the answer will be listed here.</p>
+    <div data-sources>
+      <div class="panel-empty">
+        <svg class="icon empty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+        <p>Documents used for the answer will be listed here.</p>
+      </div>
     </div>
   </section>
 </div>

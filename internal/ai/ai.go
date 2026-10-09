@@ -1,22 +1,21 @@
 // Package ai defines the AI provider interface (Claude, OpenAI).
 //
-// Until AI answers are implemented, both providers only report whether their
-// API key is configured; Ask returns ErrNotImplemented.
+// Both providers run the same tool loop: the model searches and reads the
+// user's documents through a Toolbox, then answers citing collection/path.
 package ai
 
 import (
 	"context"
-	"errors"
 	"strings"
 )
-
-// ErrNotImplemented is returned by Ask until AI answers exist.
-var ErrNotImplemented = errors.New("not implemented")
 
 // AskRequest is a question about the user's documents.
 type AskRequest struct {
 	Question    string
 	Collections []string
+	// Tools runs search_documents, read_document and list_collections for this
+	// question, limited to Collections. Providers only translate tool calls.
+	Tools *Toolbox
 }
 
 // Source is a document the answer is based on.
@@ -38,7 +37,7 @@ type Provider interface {
 	DisplayName() string // "Claude" | "OpenAI"
 	Configured() bool    // API key env var present
 	Model() string
-	Ask(ctx context.Context, req AskRequest) (AskResponse, error) // returns ErrNotImplemented until Phase 6
+	Ask(ctx context.Context, req AskRequest) (AskResponse, error)
 }
 
 // KeyHinter is implemented by providers that can show which key they use,

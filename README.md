@@ -6,10 +6,13 @@ lantern is a single Go binary with no external dependencies. It lets you:
 
 - **browse and read** every QMD collection, folder by folder, with rendered markdown;
 - **search** through your running QMD server, either Fast (keywords) or Smart (keywords plus meaning, reranked);
-- **ask AI** about your documents. This page is a preview: AI answers are not implemented yet.
+- **ask AI** about your documents: Claude or OpenAI searches and reads your notes through QMD, then
+  answers and cites its sources.
 
-Everything runs on your computer. lantern only listens on `127.0.0.1`, reads QMD's config and your
-markdown files without ever changing them, and does not use the internet.
+lantern runs on your computer and only listens on `127.0.0.1`. It reads QMD's config and your markdown
+files without ever changing them. Browsing and search never leave your computer. Only **Ask AI** talks
+to the internet: it sends your question, plus the snippets and documents the AI chooses to read, to the
+provider you pick.
 
 > Screenshots: _coming soon_
 
@@ -68,7 +71,7 @@ Stop it with `Ctrl-C`.
 | **Collection** | A folder tree plus the documents in the current folder, with title, modified date and size. |
 | **Document** | The rendered markdown, frontmatter chips and a table of contents. Buttons: *Open in editor*, *Copy path*, *Raw*. |
 | **Search** | *Fast* searches as you type. *Smart* searches when you press Enter; the first Smart search can be slow while QMD loads its models. You can pick collections and how many results to show. |
-| **Ask AI** | Coming soon. The page shows which provider keys lantern detected. |
+| **Ask AI** | Pick Claude or OpenAI and the collections to use, then ask. You see each step live ("Searching…", "Reading notes/x.md…"), then the answer with clickable citations and a list of sources. `Ctrl`/`⌘`+`Enter` asks, and *Stop* cancels. |
 | **Settings** | Read-only: the QMD server and its status, the config file, your collections, AI keys (masked) and the version. |
 
 ## Flags
@@ -97,10 +100,12 @@ With `--qmd-index work` it reads `work.yml` instead of `index.yml`.
 | Variable | Purpose |
 |---|---|
 | `QMD_EDITOR_URI` | The *Open in editor* link, same as in QMD. Falls back to `editor_uri` in QMD's config, then to `vscode://file{path}`. |
-| `LANTERN_ANTHROPIC_API_KEY` | Claude API key, for Ask AI (coming soon). |
-| `LANTERN_OPENAI_API_KEY` | OpenAI API key, for Ask AI (coming soon). |
+| `LANTERN_ANTHROPIC_API_KEY` | Claude API key, for Ask AI. |
+| `LANTERN_OPENAI_API_KEY` | OpenAI API key, for Ask AI. |
 | `LANTERN_CLAUDE_MODEL` | Claude model. Default: `claude-opus-5-5`. |
-| `LANTERN_OPENAI_MODEL` | OpenAI model. The default is picked when AI answers are added. |
+| `LANTERN_CLAUDE_EFFORT` | Claude effort: `low`, `medium`, `high`, `xhigh` or `max`. Default: `medium`. Higher is more thorough, slower and more expensive. |
+| `LANTERN_OPENAI_MODEL` | OpenAI model. Default: `gpt-6-astra`. |
+| `LANTERN_OPENAI_EFFORT` | OpenAI reasoning effort, from `none` up to `max`. Default: `medium`. |
 
 lantern uses its own variable names on purpose. A global `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` in
 your shell is also read by other tools, and lantern ignores those names. Put the keys in your shell
@@ -113,6 +118,23 @@ export LANTERN_OPENAI_API_KEY="sk-..."
 
 Keys are read when lantern starts. They are never stored, logged or sent to the browser.
 
+### How Ask AI works
+
+The AI gets three tools: `search_documents` (QMD search), `read_document` (reads a file, up to 400
+lines per call) and `list_collections`. It decides what to search and read, then answers only from
+your documents and cites each one as `collection/path`. lantern enforces the limits:
+
+- the AI can only use the collections you ticked;
+- it can read only files that belong to those collections;
+- it gets at most 8 rounds of tool calls;
+- the whole question has a 5-minute time limit.
+
+With Claude, if a safety filter declines a question, the request is retried on the fallback model that
+Anthropic recommends (`fallbacks: "default"`). With OpenAI, lantern uses the Responses API, which stores
+responses on OpenAI's side so each tool round can continue from the previous one.
+
+Each question costs API credits on your account. Watch your usage in the provider's console.
+
 ## Security notes
 
 - There is no login and no HTTPS. lantern is a personal tool and listens on `127.0.0.1` by default.
@@ -120,8 +142,9 @@ Keys are read when lantern starts. They are never stored, logged or sent to the 
   lantern prints a warning.
 - While listening on localhost, lantern rejects requests addressed to any other host name, which
   protects against DNS-rebinding attacks from websites.
-- Markdown is rendered without raw HTML. Attachments such as images, PDFs and SVGs are served in a
-  sandbox, so they can't run scripts.
+- Markdown, including AI answers, is rendered without raw HTML or script links. Attachments such as
+  images, PDFs and SVGs are served in a sandbox, so they can't run scripts.
+- `POST /api/ask` accepts only same-origin JSON, so other websites can't spend your API credits.
 - Hidden files and folders (like `.obsidian` or `.env`) are never listed or served.
 
 ## Development

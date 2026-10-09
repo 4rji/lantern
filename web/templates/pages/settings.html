@@ -52,7 +52,7 @@
       <dt>{{.DisplayName}}</dt>
       <dd>
         {{if .Configured}}<span class="badge badge-ok">Key detected</span> <code>{{.MaskedKey}}</code>{{else}}<span class="badge badge-danger">Key missing</span> <span class="muted">set <code>{{.KeyVar}}</code></span>{{end}}
-        <div class="cell-sub">Model: {{if .Model}}<code>{{.Model}}</code>{{else}}not chosen yet{{end}} <span class="muted">(<code>{{.ModelVar}}</code>)</span></div>
+        <div class="cell-sub">Model: <code>{{.Model}}</code> <span class="muted">(<code>{{.ModelVar}}</code>)</span>{{if .Effort}} · effort <code>{{.Effort}}</code> <span class="muted">(<code>{{.EffortVar}}</code>)</span>{{end}}</div>
       </dd>
       {{end}}
     </dl>

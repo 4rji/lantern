@@ -162,3 +162,15 @@ func TestRenderDropsDuplicateTitle(t *testing.T) {
 		t.Errorf("H1 that differs from the title must stay:\n%s", doc.HTML)
 	}
 }
+
+func TestRenderWithoutCollection(t *testing.T) {
+	doc, err := New().Render([]byte("[a](/c/demo/x.md) [b](other.md) [x](javascript:alert(1)) ![i](data:text/html,hi)\n"), Location{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	html := string(doc.HTML)
+	contains(t, html, `href="/c/demo/x.md"`, `href="other.md"`)
+	if strings.Contains(html, "javascript:") || strings.Contains(html, "data:text/html") {
+		t.Errorf("dangerous URLs must be dropped:\n%s", html)
+	}
+}

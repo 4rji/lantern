@@ -28,6 +28,8 @@ type settingsProvider struct {
 	KeyVar      string
 	Model       string
 	ModelVar    string
+	Effort      string
+	EffortVar   string
 }
 
 type settingsData struct {
@@ -38,9 +40,10 @@ type settingsData struct {
 	GoVersion   string
 }
 
-var providerVars = map[string][2]string{
-	"claude": {ai.EnvAnthropicKey, ai.EnvClaudeModel},
-	"openai": {ai.EnvOpenAIKey, ai.EnvOpenAIModel},
+// providerVars are each provider's key, model and effort environment variables.
+var providerVars = map[string][3]string{
+	"claude": {ai.EnvAnthropicKey, ai.EnvClaudeModel, ai.EnvClaudeEffort},
+	"openai": {ai.EnvOpenAIKey, ai.EnvOpenAIModel, ai.EnvOpenAIEffort},
 }
 
 func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +79,10 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			Model:       pr.Model(),
 			KeyVar:      providerVars[pr.ID()][0],
 			ModelVar:    providerVars[pr.ID()][1],
+			EffortVar:   providerVars[pr.ID()][2],
+		}
+		if e, ok := pr.(interface{ Effort() string }); ok {
+			sp.Effort = e.Effort()
 		}
 		if h, ok := pr.(ai.KeyHinter); ok {
 			sp.MaskedKey = h.MaskedKey()

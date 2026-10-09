@@ -137,10 +137,10 @@ func (r *Renderer) Render(source []byte, loc Location) (Document, error) {
 }
 
 // ResolveLink maps a link destination found in the document at loc to a
-// dashboard URL. Absolute URLs, anchors and links that leave the collection
-// are returned unchanged.
+// dashboard URL. Absolute URLs, anchors, links that leave the collection, and
+// any link when loc has no collection (e.g. an AI answer) are returned unchanged.
 func ResolveLink(loc Location, dest string) string {
-	if dest == "" || strings.HasPrefix(dest, "#") {
+	if loc.Collection == "" || dest == "" || strings.HasPrefix(dest, "#") {
 		return dest
 	}
 	u, err := url.Parse(dest)

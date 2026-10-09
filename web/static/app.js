@@ -156,7 +156,177 @@
     syncMode();
   }
 
+  // ---------- Ask AI page ----------
+
+  // Reads a text/event-stream body and calls onEvent(name, data) per event.
+  function readEvents(body, onEvent) {
+    var reader = body.getReader();
+    var decoder = new TextDecoder();
+    var buffer = "";
+    function handle(chunk) {
+      var name = "message", data = "";
+      chunk.split("\n").forEach(function (line) {
+        if (line.indexOf("event:") === 0) name = line.slice(6).trim();
+        else if (line.indexOf("data:") === 0) data += line.slice(5).trim();
+      });
+      if (data) {
+        try { onEvent(name, JSON.parse(data)); } catch (e) { /* ignore malformed event */ }
+      }
+    }
+    function pump() {
+      return reader.read().then(function (r) {
+        if (r.done) {
+          if (buffer.trim()) handle(buffer);
+          return;
+        }
+        buffer += decoder.decode(r.value, { stream: true });
+        var parts = buffer.split("\n\n");
+        buffer = parts.pop();
+        parts.forEach(handle);
+        return pump();
+      });
+    }
+    return pump();
+  }
+
+  function el(tag, className, text) {
+    var e = document.createElement(tag);
+    if (className) e.className = className;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function initAsk() {
+    var form = document.querySelector("[data-ask-form]");
+    if (!form) return;
+    var submit = form.querySelector("[data-ask-submit]");
+    var stop = form.querySelector("[data-ask-stop]");
+    var note = form.querySelector("[data-ask-note]");
+    var noteText = note.textContent;
+    var question = form.querySelector("textarea[name=question]");
+    var answerBox = document.querySelector("[data-answer]");
+    var sourcesBox = document.querySelector("[data-sources]");
+    var running = null; // AbortController while a question runs
+
+    function provider() { return form.querySelector("input[name=provider]:checked"); }
+
+    function sync() {
+      var p = provider();
+      var ok = !!p && p.getAttribute("data-configured") === "true";
+      submit.disabled = !ok || !!running;
+      stop.hidden = !running;
+      note.classList.toggle("is-warning", !!p && !ok);
+      note.textContent = p && !ok
+        ? p.getAttribute("data-name") + " has no API key. Set " + p.getAttribute("data-key-var") + " and restart lantern."
+        : noteText;
+    }
+
+    function showError(message) {
+      answerBox.replaceChildren();
+      var banner = el("div", "banner banner-danger");
+      banner.setAttribute("role", "alert");
+      banner.appendChild(el("div", null, message));
+      answerBox.appendChild(banner);
+    }
+
+    function showProgress() {
+      var list = el("ol", "ask-progress");
+      answerBox.replaceChildren(list);
+      sourcesBox.replaceChildren(el("p", "muted", "Collecting sources…"));
+      return list;
+    }
+
+    function addStep(list, message) {
+      var prev = list.querySelector(".is-current");
+      if (prev) prev.classList.remove("is-current");
+      list.appendChild(el("li", "is-current", message));
+    }
+
+    function showAnswer(res) {
+      var body = el("div", "prose answer-body");
+      // Rendered server-side by goldmark in safe mode: text is escaped, raw
+      // HTML and script URLs are dropped.
+      body.innerHTML = res.answer_html;
+      answerBox.replaceChildren(body, el("p", "answer-meta",
+        "Answered by " + res.provider + " (" + res.model + ") in " + res.elapsed + "."));
+
+      sourcesBox.replaceChildren();
+      if (!res.sources.length) {
+        sourcesBox.appendChild(el("p", "muted", "No documents were used."));
+        return;
+      }
+      var list = el("ul", "source-list");
+      res.sources.forEach(function (s) {
+        var a = el("a");
+        a.href = s.url;
+        a.appendChild(el("span", "source-title", s.title || s.path));
+        a.appendChild(el("span", "source-path", s.collection + "/" + s.path));
+        var li = el("li");
+        li.appendChild(a);
+        list.appendChild(li);
+      });
+      sourcesBox.appendChild(list);
+    }
+
+    function finish() {
+      running = null;
+      sync();
+    }
+
+    form.addEventListener("change", sync);
+    question.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        form.requestSubmit();
+      }
+    });
+    stop.addEventListener("click", function () {
+      if (running) running.abort();
+    });
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (running || submit.disabled) return;
+      var text = question.value.trim();
+      if (!text) { question.focus(); return; }
+      var collections = Array.prototype.map.call(
+        form.querySelectorAll("input[name=c]:checked"), function (c) { return c.value; });
+
+      running = new AbortController();
+      sync();
+      var steps = showProgress();
+      addStep(steps, "Starting…");
+      var answered = false;
+
+      fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "text/event-stream" },
+        body: JSON.stringify({ provider: provider().value, question: text, collections: collections }),
+        signal: running.signal
+      }).then(function (res) {
+        var type = res.headers.get("Content-Type") || "";
+        if (!res.ok || type.indexOf("text/event-stream") !== 0) {
+          return res.json().then(function (j) { showError(j.error || "Request failed."); },
+                                 function () { showError("Request failed (HTTP " + res.status + ")."); });
+        }
+        return readEvents(res.body, function (name, data) {
+          if (name === "progress") addStep(steps, data.message);
+          else if (name === "answer") { answered = true; showAnswer(data); }
+          else if (name === "error") { answered = true; showError(data.message); }
+        }).then(function () {
+          if (!answered) showError("The connection closed before an answer arrived.");
+        });
+      }).catch(function (err) {
+        if (err.name === "AbortError") showError("Stopped.");
+        else showError("Could not reach lantern: " + err.message);
+      }).then(finish);
+    });
+
+    sync();
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    initAsk();
     initSearch();
     initCopyButtons();
     initRawToggle();

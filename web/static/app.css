@@ -66,6 +66,8 @@
 *::before,
 *::after { box-sizing: border-box; }
 
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -867,7 +869,23 @@ textarea {
 }
 textarea:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 textarea::placeholder { color: var(--text-faint); }
-.ask-actions { display: flex; justify-content: flex-end; }
+.ask-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.ask-note { flex: 1; min-width: 220px; margin: 0; font-size: 13px; color: var(--text-faint); }
+.ask-note.is-warning { color: var(--danger); }
+
+.ask-progress { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--text-muted); }
+.ask-progress li { display: flex; align-items: center; gap: 10px; }
+.ask-progress li::before { content: ""; width: 6px; height: 6px; margin: 0 5px; border-radius: 50%; background: var(--ok); flex: none; }
+.ask-progress li.is-current::before { width: 12px; height: 12px; margin: 0 2px; background: none; border: 2px solid var(--border-strong); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
+.answer-meta { margin: 16px 0 0; padding-top: 10px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--text-faint); }
+.answer-body { font-size: 15px; }
+.answer-body > :last-child { margin-bottom: 0; }
+.source-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.source-list a { display: block; padding: 8px 10px; margin: 0 -10px; border-radius: var(--radius-sm); color: var(--text); }
+.source-list a:hover { background: var(--surface-2); text-decoration: none; }
+.source-list a:hover .source-title { color: var(--accent); }
+.source-title { display: block; font-weight: 600; font-size: 14px; }
+.source-path { display: block; font-family: var(--font-mono); font-size: 12px; color: var(--text-faint); overflow-wrap: anywhere; }
 
 .ask-output { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; }
 .ask-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; min-height: 180px; }
