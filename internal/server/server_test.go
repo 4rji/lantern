@@ -16,12 +16,20 @@ import (
 	"github.com/4rji/lantern/internal/qmd"
 )
 
-// fakeHealth simulates QMD being up or down.
+// fakeHealth simulates QMD being up or down. query, if set, answers /query.
 type fakeHealth struct {
 	mu    sync.Mutex
 	up    bool
 	err   error
 	calls int
+	query func(ctx context.Context, q qmd.QueryRequest) ([]qmd.Result, error)
+}
+
+func (f *fakeHealth) Query(ctx context.Context, q qmd.QueryRequest) ([]qmd.Result, error) {
+	if f.query == nil {
+		return nil, qmd.ErrUnavailable
+	}
+	return f.query(ctx, q)
 }
 
 func (f *fakeHealth) set(up bool) {
@@ -52,7 +60,7 @@ func writeConfig(t *testing.T) string {
 	return p
 }
 
-func newTestServer(t *testing.T, h healthChecker, configPath string) *Server {
+func newTestServer(t *testing.T, h QMD, configPath string) *Server {
 	t.Helper()
 	s, err := New(Options{Version: "test", QMDURL: "http://localhost:8181", QMDConfigPath: configPath, LocalOnly: true}, h)
 	if err != nil {

@@ -11,7 +11,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/4rji/lantern/internal/ai"
+	"github.com/4rji/lantern/internal/library"
 	"github.com/4rji/lantern/internal/qmdconfig"
+	"github.com/4rji/lantern/internal/render"
 	"github.com/4rji/lantern/web"
 )
 
@@ -20,6 +23,10 @@ type Options struct {
 	Version       string
 	QMDURL        string
 	QMDConfigPath string
+	// Providers are the AI providers shown on Ask AI and Settings.
+	Providers []ai.Provider
+	// EditorURI overrides the "Open in editor" template, like QMD's QMD_EDITOR_URI.
+	EditorURI string
 	// LocalOnly rejects requests whose Host is not a loopback name. It blocks
 	// DNS-rebinding pages from reading notes through a server bound to 127.0.0.1.
 	LocalOnly bool
@@ -27,26 +34,44 @@ type Options struct {
 
 // Server serves the lantern dashboard.
 type Server struct {
-	opts    Options
-	status  *statusCache
-	configs *configStore
-	pages   map[string]*template.Template
-	static  fs.FS
-	assets  map[string]string // static file name -> content hash
-	handler http.Handler
+	opts     Options
+	status   *statusCache
+	configs  *configStore
+	pages    map[string]*template.Template
+	static   fs.FS
+	assets   map[string]string // static file name -> content hash
+	codeCSS  []byte            // generated syntax-highlighting CSS
+	docs     *docCache
+	renderer *render.Renderer
+	query    querier
+	handler  http.Handler
 }
 
 // pageNames are the templates under web/templates/pages.
-var pageNames = []string{"library", "search", "ask", "settings", "error"}
+var pageNames = []string{"library", "collection", "document", "search", "ask", "settings", "error"}
 
-// New builds a Server. health is usually a *qmd.Client.
-func New(opts Options, health healthChecker) (*Server, error) {
+// QMD is what the server needs from the QMD client.
+type QMD interface {
+	healthChecker
+	querier
+}
+
+// New builds a Server. client is usually a *qmd.Client.
+func New(opts Options, client QMD) (*Server, error) {
 	s := &Server{
-		opts:    opts,
-		status:  newStatusCache(health),
-		configs: newConfigStore(opts.QMDConfigPath),
-		pages:   map[string]*template.Template{},
+		opts:     opts,
+		status:   newStatusCache(client),
+		query:    client,
+		configs:  newConfigStore(opts.QMDConfigPath),
+		pages:    map[string]*template.Template{},
+		docs:     newDocCache(),
+		renderer: render.New(),
 	}
+	css, err := render.CodeCSS()
+	if err != nil {
+		return nil, fmt.Errorf("build code CSS: %w", err)
+	}
+	s.codeCSS = []byte(css)
 	static, err := fs.Sub(web.FS, "static")
 	if err != nil {
 		return nil, err
@@ -55,6 +80,7 @@ func New(opts Options, health healthChecker) (*Server, error) {
 	if s.assets, err = hashAssets(static); err != nil {
 		return nil, err
 	}
+	s.assets["code.css"] = contentHash(s.codeCSS)
 	for _, name := range pageNames {
 		t, err := template.New(name).Funcs(s.funcs()).ParseFS(web.FS,
 			"templates/layout.html",
@@ -77,11 +103,22 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) routes() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", s.page("library", "Library"))
-	mux.HandleFunc("GET /search", s.page("search", "Search"))
-	mux.HandleFunc("GET /ask", s.page("ask", "Ask AI"))
-	mux.HandleFunc("GET /settings", s.page("settings", "Settings"))
+	mux.HandleFunc("GET /{$}", s.handleLibrary)
+	mux.HandleFunc("GET /c/{name}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, library.WebPath(r.PathValue("name"), "", true), http.StatusMovedPermanently)
+	})
+	mux.HandleFunc("GET /c/{name}/{path...}", s.handleCollection)
+	mux.HandleFunc("GET /search", s.handleSearchPage)
+	mux.HandleFunc("GET /search/results", s.handleSearchResults)
+	mux.HandleFunc("GET /ask", s.handleAskPage)
+	mux.HandleFunc("POST /api/ask", s.handleAPIAsk)
+	mux.HandleFunc("/api/ask", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Allow", http.MethodPost)
+		writeJSONError(w, http.StatusMethodNotAllowed, "use POST")
+	})
+	mux.HandleFunc("GET /settings", s.handleSettings)
 	mux.HandleFunc("GET /partials/status", s.handleStatus)
+	mux.HandleFunc("GET /static/code.css", s.handleCodeCSS)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", staticCache(http.FileServerFS(s.static))))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
@@ -119,13 +156,6 @@ func (s *Server) newPage(r *http.Request, title, nav string, data any) pageData 
 		p.Config = cfg
 	}
 	return p
-}
-
-// page returns a handler that renders a page with no extra data.
-func (s *Server) page(name, title string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		s.render(w, r, http.StatusOK, name, s.newPage(r, title, name, nil))
-	}
 }
 
 // render executes a page template into a buffer first, so a template error
@@ -240,4 +270,10 @@ func staticCache(next http.Handler) http.Handler {
 		w.Header().Set("Cache-Control", "public, max-age=3600")
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (s *Server) handleCodeCSS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	w.Write(s.codeCSS)
 }

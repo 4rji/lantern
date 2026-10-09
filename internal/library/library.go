@@ -26,6 +26,8 @@ import (
 var ErrOutsideRoot = errors.New("path is outside the collection")
 
 // builtinExcludes are folder names QMD never indexes, whatever the config says.
+// Hidden files and folders (".name") are skipped too: QMD scans with fast-glob,
+// which does not match dotfiles by default.
 var builtinExcludes = map[string]bool{
 	"node_modules": true, ".git": true, ".cache": true,
 	"vendor": true, "dist": true, "build": true,
@@ -85,12 +87,12 @@ func Walk(c *qmdconfig.Collection) ([]Doc, error) {
 		}
 		rel = filepath.ToSlash(rel)
 		if d.IsDir() {
-			if rel != "." && (builtinExcludes[d.Name()] || matchAny(c.Ignore, rel)) {
+			if rel != "." && (excludedName(d.Name()) || matchAny(c.Ignore, rel)) {
 				return fs.SkipDir
 			}
 			return nil
 		}
-		if !d.Type().IsRegular() || !matchAny(patterns, rel) || matchAny(c.Ignore, rel) {
+		if strings.HasPrefix(d.Name(), ".") || !d.Type().IsRegular() || !matchAny(patterns, rel) || matchAny(c.Ignore, rel) {
 			return nil
 		}
 		info, err := d.Info()
@@ -116,12 +118,16 @@ func Walk(c *qmdconfig.Collection) ([]Doc, error) {
 // Matches reports whether rel (slash-separated) is a document of the collection.
 func Matches(c *qmdconfig.Collection, rel string) bool {
 	rel = strings.TrimPrefix(rel, "/")
-	for _, seg := range strings.Split(path.Dir(rel), "/") {
-		if builtinExcludes[seg] {
+	for _, seg := range strings.Split(rel, "/") {
+		if excludedName(seg) {
 			return false
 		}
 	}
 	return matchAny(c.Patterns(), rel) && !matchAny(c.Ignore, rel)
+}
+
+func excludedName(name string) bool {
+	return builtinExcludes[name] || (strings.HasPrefix(name, ".") && name != ".")
 }
 
 func matchAny(patterns []string, rel string) bool {

@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/4rji/lantern/internal/ai"
 	"github.com/4rji/lantern/internal/config"
 	"github.com/4rji/lantern/internal/qmd"
 	"github.com/4rji/lantern/internal/server"
@@ -49,6 +50,8 @@ func run() error {
 		Version:       version,
 		QMDURL:        cfg.QMDURL,
 		QMDConfigPath: cfg.QMDConfigPath,
+		EditorURI:     os.Getenv("QMD_EDITOR_URI"),
+		Providers:     ai.Providers(os.Getenv),
 		LocalOnly:     cfg.Loopback(),
 	}, qmd.New(cfg.QMDURL))
 	if err != nil {

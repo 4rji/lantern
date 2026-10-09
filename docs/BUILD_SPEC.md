@@ -1,8 +1,9 @@
 # lantern — Build Instructions (for Claude)
 
 > **Working name:** `lantern` (rename freely; search-and-replace this file).
-> **Status:** not started. This file is the build spec. Claude implements it phase by phase,
-> after the user creates the GitHub repository.
+> **Status:** Phases 0–5 done. Phase 6 (AI answers) not started. This file is the build spec.
+> Claude implements it phase by phase. Decisions made while building are listed in
+> **Implementation notes** at the end.
 
 ---
 
@@ -440,3 +441,40 @@ and open correctly. With no key set, the page still shows "key missing" instead 
 - Installing or configuring QMD, or editing collections from the UI.
 - Triggering `qmd update` / `qmd embed` from the UI. Could be a later addition.
 - Auth, HTTPS, multi-user, deployment.
+
+---
+
+## Implementation notes (Phases 0–5)
+
+Decisions made while building, where the code differs from or adds to the spec above.
+
+- **Name:** renamed from `qmd-studio` to `lantern`. Module `github.com/4rji/lantern`, env vars `LANTERN_*`.
+- **Real QMD shapes** (Phase 0 fixtures in `testdata/`):
+  - `/health` also returns `"status":"ok"`.
+  - `/query` results have `docid`, `file`, `title`, `score`, `context`, `line` and `snippet`.
+  - Over HTTP every snippet line starts with `N: `, and the first line is a `@@ … @@` hunk header. `qmd.Result.CleanSnippet` strips both.
+  - QMD's `title` is the first H1 and ignores the frontmatter `title`.
+- **index.yml as QMD writes it:** context keys are relative (`""` for the root, `work` for a subfolder). The code accepts both forms (`/work` and `work`). `editor_uri_template` is accepted as an alias of `editor_uri`, and `QMD_EDITOR_URI` overrides both.
+- **Walking collections** follows QMD:
+  - The built-in exclusions are skipped: `node_modules`, `.git`, `.cache`, `vendor`, `dist`, `build`.
+  - Hidden files and folders are skipped, because QMD uses fast-glob with `dot: false`.
+  - `pattern` can be a comma-separated union or use braces.
+- **Themes:** dark is the default and light is the alternative. The choice is remembered in `localStorage`; the app does not follow `prefers-color-scheme`. All UI text is in English.
+- **Markdown:**
+  - Uses goldmark **v1** (v1.8.6), because goldmark-meta and goldmark-highlighting only support v1.
+  - Raw HTML inside markdown is not rendered (safe mode).
+  - Code highlighting uses chroma CSS classes, with one stylesheet per theme served at `/static/code.css`.
+  - chroma v2.27 requires Go ≥ 1.25, so `go.mod` says `go 1.25`.
+- **Security:**
+  - When bound to loopback, requests whose `Host` is not localhost get a 403, which blocks DNS rebinding.
+  - Non-markdown files from collections are served with `Content-Security-Policy: sandbox`.
+  - Hidden paths return 404.
+  - `POST /api/ask` accepts only same-origin `application/json`, so other websites can't spend API credits once Phase 6 exists.
+- **Search:**
+  - Uses `HX-Replace-Url`, so the address bar stays shareable without one history entry per keystroke.
+  - Results whose file is missing on this computer are shown without a link.
+  - `qmd query` on the CLI also expands the query with its own model. Smart mode sends only `lex` + `vec`, so ordering can differ slightly from the CLI.
+- **AI (Phase 5 stubs):**
+  - The `ai.KeyHinter` interface supplies the masked key (`••••` + last 4 characters) shown in Settings.
+  - The OpenAI default model is empty until Phase 6 picks one from current docs.
+

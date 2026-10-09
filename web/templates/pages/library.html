@@ -3,9 +3,39 @@
   <h1>Library</h1>
   <p class="lead">Everything QMD knows about, by collection.</p>
 </header>
+
+{{with .Data.GlobalContext}}
+<p class="callout">{{.}}</p>
+{{end}}
+
+{{if .Data.Cards}}
+<div class="cards">
+  {{range .Data.Cards}}
+  <a class="card card-link collection-card" href="{{.URL}}">
+    <div class="collection-card-head">
+      <span class="collection-icon">{{template "icon-folder"}}</span>
+      <h2>{{.Name}}</h2>
+      {{if not .Included}}<span class="badge" title="Only searched when you pick this collection">Not in default search</span>{{end}}
+    </div>
+    {{if .Context}}<p class="collection-context">{{.Context}}</p>{{end}}
+    {{if .Err}}
+    <p class="collection-error">{{.Err}}</p>
+    {{else}}
+    <p class="collection-stats">
+      <span>{{plural .DocCount "document" "documents"}}</span>
+      {{if not .ModTime.IsZero}}<span aria-hidden="true">·</span><span>Updated <time datetime="{{isodate .ModTime}}" title="{{datetime .ModTime}}">{{date .ModTime}}</time></span>{{end}}
+    </p>
+    {{end}}
+    <p class="collection-path" title="{{.Path}}"><code>{{.Path}}</code></p>
+  </a>
+  {{end}}
+</div>
+{{else if .Config}}
 <div class="empty">
   <svg class="icon empty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5z"/><path d="M4 19.5A2 2 0 0 1 6 18h12"/></svg>
-  <h2>Collections show up here soon</h2>
-  <p>Browsing collections and reading documents is the next step.</p>
+  <h2>No collections yet</h2>
+  <p>Add a folder of notes to QMD, then refresh this page:</p>
+  <p><code>qmd collection add ~/notes --name notes</code></p>
 </div>
+{{end}}
 {{end}}

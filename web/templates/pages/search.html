@@ -1,11 +1,117 @@
 {{define "content"}}
+{{with .Data}}
 <header class="page-header">
   <h1>Search</h1>
-  <p class="lead">Search your documents through QMD.</p>
+  <p class="lead">Search your documents through QMD. Everything runs on this computer.</p>
 </header>
-<div class="empty">
-  <svg class="icon empty-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-  <h2>Search is on its way</h2>
-  <p>Fast keyword search and Smart hybrid search will live here.</p>
+
+<form class="search-form{{if .Smart}} is-smart{{end}}" action="/search" method="get" role="search"
+      hx-get="/search/results" hx-target="#results" hx-trigger="submit, search-now"
+      hx-sync="this:replace" hx-indicator="#results-wrap" data-search-form>
+  <input type="hidden" name="f" value="1">
+  <div class="search-bar">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" name="q" type="search" value="{{.Query}}" placeholder="Search your documents…" autocomplete="off" spellcheck="false" autofocus aria-label="Search query">
+    <button class="btn btn-primary" type="submit">Search</button>
+  </div>
+
+  <div class="search-controls">
+    <fieldset class="segmented">
+      <legend class="sr-only">Mode</legend>
+      <label title="Keyword search. Results update as you type."><input type="radio" name="mode" value="fast"{{if not .Smart}} checked{{end}}><span>Fast</span></label>
+      <label title="Keywords plus meaning, reranked. Press Enter to search."><input type="radio" name="mode" value="smart"{{if .Smart}} checked{{end}}><span>Smart</span></label>
+    </fieldset>
+    <label class="inline-select">Show
+      <select name="limit">{{range .Limits}}<option value="{{.}}"{{if eq . $.Data.Limit}} selected{{end}}>{{.}}</option>{{end}}</select>
+      results
+    </label>
+  </div>
+
+  {{if .Collections}}
+  <fieldset class="collection-filter">
+    <legend>Collections</legend>
+    <div class="check-chips">
+      {{range .Collections}}
+      <label class="check-chip"{{if not .Included}} title="Not searched by default"{{end}}>
+        <input type="checkbox" name="c" value="{{.Name}}"{{if .Selected}} checked{{end}}>
+        <span>{{.Name}}</span>
+      </label>
+      {{end}}
+    </div>
+  </fieldset>
+  {{end}}
+
+  <p class="mode-hint mode-hint-fast">Fast: keyword matches, updated as you type.</p>
+  <p class="mode-hint mode-hint-smart">Smart: keywords plus meaning, reranked by QMD's local model. Press Enter to search.</p>
+</form>
+
+<div id="results-wrap" class="results-wrap">
+  <div class="search-progress" role="status" aria-live="polite">
+    <span class="spinner" aria-hidden="true"></span>
+    <span>Searching…</span>
+    <span class="search-progress-smart">The first Smart search can take a while as QMD loads its models.</span>
+  </div>
+  <div id="results"{{if .Query}} hx-get="{{.ResultsURL}}" hx-trigger="load" hx-indicator="#results-wrap"{{end}}>
+    {{if not .Query}}{{template "search-idle"}}{{end}}
+  </div>
 </div>
+{{end}}
+{{end}}
+
+{{define "search-idle"}}
+<div class="results-empty">
+  <p>Type a word or phrase to search your documents.</p>
+</div>
+{{end}}
+
+{{define "search-results"}}
+{{if .Idle}}
+  {{template "search-idle"}}
+{{else if .NoConfig}}
+  <div class="results-empty"><p>lantern can't read QMD's config, so it doesn't know your collections. See the message above.</p></div>
+{{else if .NoneChosen}}
+  <div class="results-empty"><p>Pick at least one collection to search.</p></div>
+{{else if eq .ErrKind "down"}}
+  <div class="banner banner-warn" role="alert">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+    <div><strong>QMD is not running.</strong> Start it with <code>qmd mcp --http --daemon</code>, then search again.</div>
+  </div>
+{{else if eq .ErrKind "timeout"}}
+  <div class="banner banner-warn" role="alert">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+    <div><strong>QMD did not answer in time.</strong> Smart search loads its models the first time, which can be slow. Try again, or switch to Fast.</div>
+  </div>
+{{else if .ErrKind}}
+  <div class="banner banner-danger" role="alert">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+    <div><strong>The search failed.</strong><div class="banner-detail">{{.ErrMessage}}</div></div>
+  </div>
+{{else if not .Hits}}
+  <div class="results-empty">
+    <p>No documents match <strong>“{{.Form.Query}}”</strong>.</p>
+    {{if not .Form.Smart}}<p class="muted">Try Smart mode: it also finds documents with a related meaning.</p>{{end}}
+  </div>
+{{else}}
+  <p class="results-meta">
+    {{plural (len .Hits) "result" "results"}} · {{seconds .Elapsed}} · {{if .Form.Smart}}Smart{{else}}Fast{{end}}
+  </p>
+  <ol class="results">
+    {{range .Hits}}
+    <li class="result">
+      {{if .URL}}<a class="result-card" href="{{.URL}}">{{else}}<div class="result-card">{{end}}
+        <div class="result-head">
+          <h2 class="result-title">{{.Title}}</h2>
+          {{if .Collection}}<span class="badge badge-accent">{{.Collection}}</span>{{end}}
+        </div>
+        <p class="result-path">{{.Path}}{{if not .URL}} <span class="muted">(not found on this computer)</span>{{end}}</p>
+        {{if .Snippet}}<p class="result-snippet">{{.Snippet}}</p>{{end}}
+        <div class="score" title="Relevance score {{printf "%.2f" .Score}}">
+          <span class="score-bar"><span style="width: {{.ScorePct}}%"></span></span>
+          <span class="score-num">{{printf "%.2f" .Score}}</span>
+        </div>
+      {{if .URL}}</a>{{else}}</div>{{end}}
+    </li>
+    {{end}}
+  </ol>
+{{end}}
 {{end}}

@@ -36,6 +36,8 @@ var demoFiles = map[string]string{
 	"Archive/old.md":             "# Old note\n",
 	"node_modules/pkg/readme.md": "# dependency\n",
 	".git/info.md":               "# git\n",
+	".obsidian/notes.md":         "# hidden folder\n",
+	"ideas/.draft.md":            "# hidden file\n",
 	"images/diagram.png":         "png",
 	"notes.txt":                  "text",
 }
@@ -150,6 +152,8 @@ func TestMatches(t *testing.T) {
 		"node_modules/x.md":  false,
 		"a/dist/x.md":        false,
 		"images/diagram.png": false,
+		".hidden/x.md":       false,
+		"a/.x.md":            false,
 	}
 	for rel, want := range tests {
 		if got := Matches(c, rel); got != want {

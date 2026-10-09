@@ -1,18 +1,72 @@
 {{define "content"}}
 <header class="page-header">
   <h1>Settings</h1>
-  <p class="lead">What lantern is connected to. Read-only.</p>
+  <p class="lead">What lantern is connected to. Read-only: change these with flags and environment variables.</p>
 </header>
-<section class="card">
-  <dl class="kv">
-    <dt>QMD server</dt>
-    <dd><code>{{.QMDURL}}</code></dd>
-    <dt>Status</dt>
-    <dd>{{if .Status.Up}}<span class="badge badge-ok">Connected</span> uptime {{uptime .Status.Uptime}}{{else}}<span class="badge badge-danger">Not running</span> <span class="muted">{{.Status.Error}}</span>{{end}}</dd>
-    <dt>QMD config</dt>
-    <dd><code>{{.ConfigPath}}</code>{{if .ConfigErr}} <span class="badge badge-danger">Unreadable</span>{{end}}</dd>
-    <dt>Version</dt>
-    <dd>{{.Version}}</dd>
-  </dl>
+
+<section class="settings-section">
+  <h2 class="section-title">QMD</h2>
+  <div class="card">
+    <dl class="kv">
+      <dt>Server</dt>
+      <dd><code>{{.QMDURL}}</code></dd>
+      <dt>Status</dt>
+      <dd>{{if .Status.Up}}<span class="badge badge-ok">Connected</span> <span class="muted">uptime {{uptime .Status.Uptime}}</span>{{else}}<span class="badge badge-danger">Not running</span> <span class="muted">{{.Status.Error}}</span>{{end}}</dd>
+      <dt>Config file</dt>
+      <dd><code>{{.ConfigPath}}</code>{{if .ConfigErr}} <span class="badge badge-danger">Unreadable</span>{{end}}</dd>
+      <dt>Open in editor</dt>
+      <dd><code>{{.Data.EditorURI}}</code></dd>
+    </dl>
+  </div>
+</section>
+
+<section class="settings-section">
+  <h2 class="section-title">Collections</h2>
+  {{if .Data.Collections}}
+  <div class="table-scroll">
+    <table class="doc-table settings-table">
+      <thead><tr><th scope="col">Name</th><th scope="col">Folder</th><th scope="col">Pattern</th><th scope="col">Documents</th><th scope="col">Default search</th></tr></thead>
+      <tbody>
+        {{range .Data.Collections}}
+        <tr>
+          <td><a href="{{.URL}}"><strong>{{.Name}}</strong></a>{{if .Context}}<div class="cell-sub">{{.Context}}</div>{{end}}</td>
+          <td><code class="plain">{{.Path}}</code>{{if .Err}}<div class="cell-sub cell-error">{{.Err}}</div>{{end}}</td>
+          <td><code class="plain">{{.Pattern}}</code>{{if .Ignore}}<div class="cell-sub">ignores {{.Ignore}}</div>{{end}}</td>
+          <td class="num">{{if .Err}}—{{else}}{{.DocCount}}{{end}}</td>
+          <td>{{if .Included}}<span class="badge badge-ok">Yes</span>{{else}}<span class="badge">No</span>{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div class="card"><p class="muted" style="margin:0">No collections found{{if .ConfigErr}} — the config file can't be read{{end}}.</p></div>
+  {{end}}
+</section>
+
+<section class="settings-section">
+  <h2 class="section-title">AI providers</h2>
+  <div class="card">
+    <dl class="kv">
+      {{range .Data.Providers}}
+      <dt>{{.DisplayName}}</dt>
+      <dd>
+        {{if .Configured}}<span class="badge badge-ok">Key detected</span> <code>{{.MaskedKey}}</code>{{else}}<span class="badge badge-danger">Key missing</span> <span class="muted">set <code>{{.KeyVar}}</code></span>{{end}}
+        <div class="cell-sub">Model: {{if .Model}}<code>{{.Model}}</code>{{else}}not chosen yet{{end}} <span class="muted">(<code>{{.ModelVar}}</code>)</span></div>
+      </dd>
+      {{end}}
+    </dl>
+    <p class="card-note">Keys are read from the environment when lantern starts. They are never stored or sent to the browser.</p>
+  </div>
+</section>
+
+<section class="settings-section">
+  <h2 class="section-title">About</h2>
+  <div class="card">
+    <dl class="kv">
+      <dt>Version</dt><dd>lantern {{.Version}}</dd>
+      <dt>Platform</dt><dd>{{.Data.Platform}} · {{.Data.GoVersion}}</dd>
+    </dl>
+  </div>
 </section>
 {{end}}

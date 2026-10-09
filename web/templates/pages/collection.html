@@ -1,0 +1,75 @@
+{{define "tree"}}
+<ul>
+  {{range .}}
+  <li>
+    {{if .Children}}
+    <details{{if .Open}} open{{end}}>
+      <summary><a href="{{.URL}}"{{if .Current}} aria-current="page"{{end}}><span class="tree-name">{{.Name}}</span><span class="tree-count">{{.Count}}</span></a></summary>
+      {{template "tree" .Children}}
+    </details>
+    {{else}}
+    <a class="tree-leaf" href="{{.URL}}"{{if .Current}} aria-current="page"{{end}}><span class="tree-name">{{.Name}}</span><span class="tree-count">{{.Count}}</span></a>
+    {{end}}
+  </li>
+  {{end}}
+</ul>
+{{end}}
+
+{{define "content"}}
+{{template "breadcrumbs" .Data.Crumbs}}
+<header class="page-header">
+  <h1>{{.Data.Heading}}</h1>
+  {{if .Data.Context}}<p class="lead">{{.Data.Context}}</p>{{end}}
+</header>
+
+{{if .Data.Err}}
+<div class="banner banner-danger" role="alert">
+  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+  <div><strong>{{.Data.Err}}</strong> lantern looked in <code>{{.Data.Path}}</code>.</div>
+</div>
+{{else}}
+<div class="browser">
+  <details class="tree-panel" open>
+    <summary class="tree-panel-title">Folders</summary>
+    <nav class="tree" aria-label="Folders">
+      <a class="tree-leaf tree-root" href="{{.Data.RootURL}}"{{if .Data.AtRoot}} aria-current="page"{{end}}>
+        <span class="tree-name">{{.Data.Name}}</span><span class="tree-count">{{.Data.DocCount}}</span>
+      </a>
+      {{template "tree" .Data.Tree}}
+    </nav>
+  </details>
+
+  <section class="listing" aria-label="Documents">
+    {{if .Data.Entries}}
+    <table class="doc-table">
+      <thead>
+        <tr><th scope="col">Name</th><th scope="col" class="col-date">Modified</th><th scope="col" class="col-size">Size</th></tr>
+      </thead>
+      <tbody>
+        {{range .Data.Entries}}
+        <tr>
+          <td>
+            <a class="doc-link" href="{{.URL}}">
+              {{if .Folder}}<span class="doc-icon folder">{{template "icon-folder"}}</span>{{else}}<span class="doc-icon">{{template "icon-doc"}}</span>{{end}}
+              <span class="doc-names">
+                <span class="doc-title">{{if .Folder}}{{.Name}}{{else}}{{.Title}}{{end}}</span>
+                {{if .Folder}}<span class="doc-file">{{plural .Count "document" "documents"}}</span>{{else if ne .Title .Name}}<span class="doc-file">{{.Name}}</span>{{end}}
+              </span>
+            </a>
+          </td>
+          <td class="col-date"><time datetime="{{isodate .ModTime}}" title="{{datetime .ModTime}}">{{date .ModTime}}</time></td>
+          <td class="col-size">{{if not .Folder}}{{bytes .Size}}{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <div class="empty">
+      <h2>No documents here</h2>
+      <p>This folder has no files that match the collection's pattern.</p>
+    </div>
+    {{end}}
+  </section>
+</div>
+{{end}}
+{{end}}
