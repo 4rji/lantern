@@ -1,0 +1,61 @@
+{{define "layout"}}<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>{{if .Title}}{{.Title}} · {{end}}lantern</title>
+  <script>(function(){var t="dark";try{t=localStorage.getItem("lantern-theme")||"dark"}catch(e){}document.documentElement.setAttribute("data-theme",t==="light"?"light":"dark")})();</script>
+  <link rel="icon" href="{{asset "favicon.svg"}}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{asset "app.css"}}">
+  <script src="{{asset "htmx.min.js"}}" defer></script>
+  <script src="{{asset "app.js"}}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/" aria-label="lantern home">{{template "logo"}}<span>lantern</span></a>
+      <nav class="nav" aria-label="Main">
+        <a href="/"{{if eq .Nav "library"}} aria-current="page"{{end}}>Library</a>
+        <a href="/search"{{if eq .Nav "search"}} aria-current="page"{{end}}>Search</a>
+        <a href="/ask"{{if eq .Nav "ask"}} aria-current="page"{{end}}>Ask AI</a>
+        <a href="/settings"{{if eq .Nav "settings"}} aria-current="page"{{end}}>Settings</a>
+      </nav>
+      <div class="topbar-actions">
+        {{template "status-pill" .Status}}
+        <button class="icon-btn" type="button" data-theme-toggle aria-label="Switch to light theme" title="Switch theme">
+          <svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          <svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="banners">
+    <div id="qmd-banner">{{template "qmd-banner" .Status}}</div>
+    {{if .ConfigErr}}
+    <div class="banner banner-danger" role="alert">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+      <div>
+        <strong>Can't read QMD's config.</strong>
+        lantern looked for it at <code>{{.ConfigPath}}</code>.
+        Pass <code>--qmd-config</code> to point at another file.
+        <div class="banner-detail">{{.ConfigErr}}</div>
+      </div>
+    </div>
+    {{end}}
+  </div>
+
+  <main id="main" class="main">
+    {{block "content" .}}{{end}}
+  </main>
+
+  <footer class="footer">
+    <span>lantern {{.Version}}</span>
+    <span class="footer-sep" aria-hidden="true">·</span>
+    <span>Reading QMD at <code>{{.QMDURL}}</code></span>
+  </footer>
+</body>
+</html>
+{{end}}

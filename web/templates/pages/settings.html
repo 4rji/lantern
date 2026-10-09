@@ -1,0 +1,18 @@
+{{define "content"}}
+<header class="page-header">
+  <h1>Settings</h1>
+  <p class="lead">What lantern is connected to. Read-only.</p>
+</header>
+<section class="card">
+  <dl class="kv">
+    <dt>QMD server</dt>
+    <dd><code>{{.QMDURL}}</code></dd>
+    <dt>Status</dt>
+    <dd>{{if .Status.Up}}<span class="badge badge-ok">Connected</span> uptime {{uptime .Status.Uptime}}{{else}}<span class="badge badge-danger">Not running</span> <span class="muted">{{.Status.Error}}</span>{{end}}</dd>
+    <dt>QMD config</dt>
+    <dd><code>{{.ConfigPath}}</code>{{if .ConfigErr}} <span class="badge badge-danger">Unreadable</span>{{end}}</dd>
+    <dt>Version</dt>
+    <dd>{{.Version}}</dd>
+  </dl>
+</section>
+{{end}}

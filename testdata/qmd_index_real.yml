@@ -1,0 +1,14 @@
+# Real index.yml written by QMD (captured 2026-10-09; home path replaced).
+# Note: context keys are relative ("" = collection root, "work" = subfolder),
+# not "/" and "/work" as the build spec assumed.
+collections:
+  demo:
+    path: /Users/me/lantern-demo
+    pattern: "**/*.md"
+    context:
+      "": Demo notes for lantern
+      work: "Work notes: deploys and meetings"
+models:
+  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf
+  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf
+  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf

@@ -1,0 +1,25 @@
+# Sample QMD config for tests. Shape follows QMD's documented index.yml.
+global_context: "Knowledge base for my projects"
+editor_uri: "vscode://file{path}:{line}:{col}"
+models:
+  embed: "hf:example/embed.gguf"
+collections:
+  notes:
+    path: ~/notes
+    pattern: "**/*.md"
+    ignore: ["Archive/**", "**/drafts/**"]
+    update: "git pull --rebase"
+    includeByDefault: true
+    context:
+      "/": "Personal notes and ideas"
+      "/work": "Work-related notes"
+      "/work/deploy": "Deploy runbooks"
+  docs:
+    path: /srv/docs
+    pattern: "guides/**/*.md,CHANGELOG.md"
+    includeByDefault: false
+  journal:
+    path: /srv/journal
+    context:
+      "": "Daily journal"
+      "2026": "Entries from 2026"

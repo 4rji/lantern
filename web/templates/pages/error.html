@@ -1,0 +1,9 @@
+{{define "content"}}
+<div class="empty error-page">
+  <p class="error-code">{{.Data.Code}}</p>
+  <h1>{{.Data.Heading}}</h1>
+  <p>{{.Data.Message}}</p>
+  {{with .Data.Detail}}<pre class="error-detail">{{.}}</pre>{{end}}
+  <p><a class="btn" href="/">Back to the Library</a></p>
+</div>
+{{end}}

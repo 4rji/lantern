@@ -1,0 +1,28 @@
+{{define "logo"}}<svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 2.75h5M12 2.75v2"/><path d="M8 4.75h8l1.25 3H6.75z"/><rect x="6.75" y="7.75" width="10.5" height="11.5" rx="2.25"/><path d="M9 19.25v2h6v-2"/><path class="logo-flame" d="M12 10.5c1.4 1.5 1.9 2.7 1.9 3.6a1.9 1.9 0 0 1-3.8 0c0-.9.5-2.1 1.9-3.6z"/></svg>{{end}}
+
+{{define "status-pill"}}
+<a id="qmd-status" href="/settings"
+   class="pill {{if .Up}}pill-ok{{else}}pill-down{{end}}"
+   hx-get="/partials/status" hx-trigger="every 10s" hx-swap="outerHTML"
+   title="{{if .Up}}QMD is up · uptime {{uptime .Uptime}}{{else}}{{.Error}}{{end}}">
+  <span class="pill-dot" aria-hidden="true"></span>
+  <span class="pill-label">{{if .Up}}QMD connected{{else if eq .Error "QMD is not running"}}QMD not running{{else}}QMD not responding{{end}}</span>
+</a>
+{{end}}
+
+{{define "qmd-banner"}}{{if not .Up}}
+<div class="banner banner-warn" role="status">
+  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+  <div>
+    <strong>QMD is not running.</strong>
+    Start it with <code>qmd mcp --http --daemon</code>.
+    The Library still works; Search and Ask AI need QMD.
+  </div>
+</div>
+{{end}}{{end}}
+
+{{/* Response for /partials/status: the pill, plus the banner swapped out of band. */}}
+{{define "status-update"}}
+{{template "status-pill" .Status}}
+<div id="qmd-banner" hx-swap-oob="true">{{template "qmd-banner" .Status}}</div>
+{{end}}

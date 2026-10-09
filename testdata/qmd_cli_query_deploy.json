@@ -1,0 +1,47 @@
+[
+  {
+    "docid": "#d990bb",
+    "score": 0.92,
+    "file": "qmd://demo/work/deploy/guide.md",
+    "line": 2,
+    "title": "How to deploy the API",
+    "context": "Demo notes for lantern\n\nWork notes: deploys and meetings",
+    "snippet": "@@ -1,4 @@ (0 before, 8 after)\n---\ntitle: Deploy guide\ntags: [ops, deploy]\n---"
+  },
+  {
+    "docid": "#ac4ef6",
+    "score": 0.59,
+    "file": "qmd://demo/README.md",
+    "line": 2,
+    "title": "Demo notes",
+    "context": "Demo notes for lantern",
+    "snippet": "@@ -1,3 @@ (0 before, 0 after)\n# Demo notes\nSmall collection to test lantern. See [deploy guide](work/deploy/guide.md).\n"
+  },
+  {
+    "docid": "#0ed34c",
+    "score": 0.32,
+    "file": "qmd://demo/work/meeting-2026-10-01.md",
+    "line": 2,
+    "title": "Weekly meeting",
+    "context": "Demo notes for lantern\n\nWork notes: deploys and meetings",
+    "snippet": "@@ -1,4 @@ (0 before, 1 after)\n# Weekly meeting\n- Decided to move the deploy to Thursdays.\n- [ ] Write the rollback runbook\n- [x] Upgrade the database"
+  },
+  {
+    "docid": "#ef1254",
+    "score": 0.15,
+    "file": "qmd://demo/ideas/garden.md",
+    "line": 1,
+    "title": "Garden ideas",
+    "context": "Demo notes for lantern",
+    "snippet": "@@ -1,3 @@ (0 before, 0 after)\n# Garden ideas\nPlant tomatoes in spring. Water them every morning; compost helps the soil.\n"
+  },
+  {
+    "docid": "#4caffc",
+    "score": 0.12,
+    "file": "qmd://demo/Archive/old.md",
+    "line": 1,
+    "title": "Old note",
+    "context": "Demo notes for lantern",
+    "snippet": "@@ -1,3 @@ (0 before, 0 after)\n# Old note\nThis file should be ignored.\n"
+  }
+]
