@@ -14,7 +14,7 @@ files without ever changing them. Browsing and search never leave your computer.
 to the internet: it sends your question, plus the snippets and documents the AI chooses to read, to the
 provider you pick.
 
-> Screenshots: _coming soon_
+![Screenshot of the lantern dashboard](lantern.webp)
 
 ## Prerequisites
 
